@@ -21,7 +21,7 @@ import re
 import sys
 
 environs = ['note','longcalc','rambling','newnotes']
-# list of command, number of arguments: `\opt{}{}` has 2 arguments. No spaces allowed between arguments.
+# list of [command, number of arguments]. For example `\opt{}{}` has 2 arguments. No spaces allowed between arguments.
 commands = [[r'\\opt',2],[r'\\arjun',1],[r'\\jon',1],[r'\\notes',1],[r'\\arjunhl',1],[r'\\arjunnew',1],[r'\\jeremy',1],[r'\\optlongcalc',1]]
 debug = True
 interactive = False
@@ -60,7 +60,12 @@ def del_environs(s,environs):
     return s
 
 def del_commands(s,commands):
-    # cannot delete nested environments
+    '''
+    Delete commands of the form \arjunhl {hello}
+    Does not handle nested commands correctly.
+    To save newcommands, for example, it will ignore commands that are inside curly braces:
+    { \command {} {} } will be ignored.
+    '''
     del_locations = [0]
     for c in commands:
         # does lookahead for the command to see if of the form \command {
@@ -74,21 +79,32 @@ def del_commands(s,commands):
             if debug:
                 print("Start and end of match: ",(start,end))
 
-            # delete arguments of command. pass start pos of '{' to del_args; defines new end
+            # delete arguments of command. pass start pos of '{' to del_args; returns new end
+            # del_args(full string,number of arguments, position to start searching for arguments)
             end = del_args(s,c[1],end)
 
-            # is there empty space and a newline before the command? like in a \opt in an equation?
-            empty_space_before = re.search('\s*\n',s[0:start][::-1])
-            if empty_space_before and empty_space_before.start() == 0:
-                # if match found for empty space + newline before command start, then delete
-                start = start - empty_space_before.end()
-            # delete the command too
-            del_line = 'y'
-            if interactive:
-                print('Command:\n', s[start:end])
-                del_line = input('Delete (Y/n)') or 'y'
-            if del_line == 'y' or 'Y':
-                del_locations = del_locations + [start,end]
+
+            # is it of the form { \command{}{} }? then ignore
+            prev_brace = re.search('^[^}]*{',s[0:start][::-1])
+            next_brace = re.search('^[^{]*}',s[end::])
+            if prev_brace and next_brace:
+                # ignore current match and ignore
+                continue
+            else:
+                # is there empty space and a newline before the command? like in a \opt in an equation?
+                # the -1 reverses the string, if I remember correctly
+                empty_space_before = re.search('\s*\n',s[0:start][::-1])
+                if empty_space_before and empty_space_before.start() == 0:
+                    # if match found for empty space + newline before command start, then delete
+                    start = start - empty_space_before.end()
+                # delete the command too
+
+                del_line = 'y'
+                if interactive:
+                    print('Command:\n', s[start:end])
+                    del_line = input('Delete (Y/n)') or 'y'
+                if del_line == 'y' or 'Y':
+                    del_locations = del_locations + [start,end]
                 
     del_locations.append(len(s)) #append length character to delete locations; it has even length
     # potential source of error if nested commands

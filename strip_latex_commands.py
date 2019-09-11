@@ -63,6 +63,27 @@ def del_environs(s,environs):
         s = re.sub(a,'',s,flags=re.DOTALL)
     return s
 
+def remove_subintervals(l):
+    """
+    takes in a list l which consists of tuples of integers or real numbers. it will remove intervals that are subintervals of other intervals in the list
+    the algorithm will be inefficient and run in n^2
+    """
+    i = 0
+    while i < len(l):
+        x = l[i]
+        for y in l:
+            # if (x[0],x[1]) is contained strictly inside (y[0],y[1])
+            if (y[0] <= x[0] and x[1] < y[1]) or (y[0] < x[0] and x[1] <= y[1]):
+                if debug:
+                    print(x," is a subinterval of ", y)
+                l.remove(x)
+                i = i - 1
+                continue
+        # if found as a subinterval, the counter will be decreased by one inside the for loop
+        # this will cancel with the increment outside
+        i = i + 1
+    return l
+
 def del_commands(s,commands):
     '''
     Delete commands of the form \arjunhl {hello}
@@ -70,7 +91,7 @@ def del_commands(s,commands):
     To save newcommands, for example, it will ignore commands that are inside curly braces:
     { \command {} {} } will be ignored.
     '''
-    del_locations = [0]
+    del_locations = []
     for c in commands:
         # does lookahead for the command to see if of the form \command {
         matchstring = c[0] + r'\s*(?={)'
@@ -116,23 +137,32 @@ def del_commands(s,commands):
                     print('Command:\n', s[start:end])
                     del_line = input('Delete (Y/n)') or 'y'
                 if del_line == 'y' or 'Y':
-                    del_locations = del_locations + [start,end]
+                    del_locations = del_locations + [(start,end)]
                 
-    del_locations.append(len(s)) #append length character to delete locations; it has even length
+    # this makes command reconstruction easier
+
     # potential source of error if nested commands; this is obvious if you have 
     # \a{\b{}} then the del_locations will contain
     # 0736 -> 0367 which will remove 0 to 3 and then 6 to 7
-    
-    del_locations.sort()
-
     if debug:
         print('done finding matches')
         print('delete locations', del_locations)
 
+    del_locations = remove_subintervals(del_locations)
+    # at this point we should have disjoint intervals.  so we can form a list and sort it.
+    # will transform del_locations into extract_locations to make it easier to reconstruct the string
+    extract_locations = [0] + [ y for x in del_locations for y in x ] + [len(s)]
+    # the sort is necessary so that the next reconstruction step works correctly. 
+    # other wise you may have [0,3,4,1,2] in the extract_locations
+    extract_locations.sort()
+
+    if debug:
+        print('extract locations', extract_locations)
+
     # reconstruct string
     del_string=''
-    for x in range(0,len(del_locations),2):
-        del_string = del_string + s[del_locations[x]:del_locations[x+1]] 
+    for x in range(0,len(extract_locations),2):
+        del_string = del_string + s[extract_locations[x]:extract_locations[x+1]] 
         #if debug:
             #print("substring: ",s[del_locations[x]:del_locations[x+1]])
             #print("del_string: ", del_string)

@@ -24,7 +24,7 @@ Mar 27 2018 Fixed the following problem: if you find \arjun before \arjunhl, the
 import re
 import sys
 
-environs = ['note','longcalc','rambling','newnotes','oldnotes']
+environs = ['note','longcalc','rambling','newnotes','oldnote']
 # list of [command, number of arguments]. For example `\opt{}{}` has 2 arguments. No spaces allowed between arguments.
 commands = [[r'\\opt',2],[r'\\arjun',1],[r'\\jon',1],[r'\\notes',1],[r'\\arjunhl',1],[r'\\arjunnew',1],[r'\\jeremy',1],[r'\\optlongcalc',1],[r'\\oldnotes',1],[r'\\arjunnotes',1]]
 debug = True
